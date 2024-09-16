@@ -20,11 +20,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Xsd Include="XMLSchema.xsd">
-      <Filter>Файлы заголовков</Filter>
-    </Xsd>
-  </ItemGroup>
-  <ItemGroup>
     <Xml Include="XMLFile.xml" />
   </ItemGroup>
 </Project>
