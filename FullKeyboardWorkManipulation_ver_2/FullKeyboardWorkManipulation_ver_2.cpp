@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <cmath>
+#include <shellscalingapi.h>
 
 #define HOTKEY_ID_SHOW_GRID 1
 #define HOTKEY_ID_EXIT 2
@@ -19,6 +20,7 @@
 #define HOTKEY_ID_SCROLL_UP 9
 #define HOTKEY_ID_SCROLL_DOWN 10
 
+#pragma comment(lib, "Shcore.lib")
 //using namespace std;
 
 HHOOK hKeyboardHook;
@@ -31,6 +33,33 @@ std::vector<std::vector<char>> pairs;
 void SetHook();
 void Unhook();
 void makePairs();
+
+double getMonitorScaler() {
+    double scaler;
+    POINT pt;
+    GetCursorPos(&pt);
+    HMONITOR hMonitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+    auto x = unsigned{};
+    auto y = unsigned{};
+    GetDpiForMonitor(hMonitor, MDT_EFFECTIVE_DPI, &x, &y);
+
+
+    switch (x) {
+    case 96:
+        scaler = 1.04;
+        break;
+    case 120:
+        scaler = 1.04;
+        break;
+    case 140:
+        scaler = 1.04;
+        break;
+    default:
+        scaler = 1.04;
+        break;
+    }
+    return scaler;
+}
 
 // Функция для имитации нажатия левой кнопки мыши
 void LeftClickDown() {
@@ -121,12 +150,14 @@ std::pair<int, int> getCellPosition() {
             return std::pair<int, int>{-1, -1};
         }
 
+        double scaler = getMonitorScaler();
+
         const int SCREEN_HEIGHT = GetSystemMetrics(SM_CYSCREEN);
         const int SCREEN_WIDTH = GetSystemMetrics(SM_CXSCREEN);
 
         int numCells = sqrt(pairs.size());
 
-        int cellSize = sqrt(SCREEN_HEIGHT * SCREEN_WIDTH / pairs.size());
+        int cellSize = sqrt(SCREEN_HEIGHT * SCREEN_WIDTH * scaler / pairs.size());
 
         int cellAmountInRow = (SCREEN_WIDTH / cellSize);
         if (SCREEN_WIDTH % cellSize != 0) {
@@ -169,8 +200,10 @@ void gotoPoint(std::pair<int, int> coordinate) {
     else
     {
         MONITORINFO mi = { sizeof(mi) };
+        
         if (GetMonitorInfo(hMonitor, &mi)) {
             SetCursorPos(mi.rcMonitor.left + coordinate.first, mi.rcMonitor.top + coordinate.second);
+            
         }
         glBufferOutput = std::to_wstring(coordinate.first) + L"x" + std::to_wstring(coordinate.second) + L"\n";
         OutputDebugString(L"___Cursor GOTO pos ");
@@ -361,6 +394,8 @@ LRESULT CALLBACK HotkeyWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
             MONITORINFO mi = { sizeof(mi) };
             if (GetMonitorInfo(hMonitor, &mi)) {
                 // Показать основное окно с сеткой на активном мониторе
+                
+
                 HWND mainHwnd = FindWindow(L"GridWindowClass", NULL);
                 if (mainHwnd) {
                     OutputDebugString(L"Hotkey pressed, showing grid window.\n");
@@ -480,12 +515,20 @@ LRESULT CALLBACK MainWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
         SetBkMode(hdc, OPAQUE); // Установка непрозрачного фона для текста
         SetBkColor(hdc, RGB(0, 0, 0)); // Черный цвет фона для текста
 
+
         const int SCREEN_HEIGHT = GetSystemMetrics(SM_CYSCREEN);
         const int SCREEN_WIDTH = GetSystemMetrics(SM_CXSCREEN);
+        //std::wstring outputDebugMessage = L"Screen Height = " + std::to_wstring(SCREEN_HEIGHT) + L" Screen Width = " + std::to_wstring(SCREEN_WIDTH);
+        //MessageBox(NULL, outputDebugMessage.c_str(), L"Внимание", MB_OK | MB_ICONERROR);
+
         
         //int cellWidth = (SCREEN_WIDTH / numCells) - 5;
         //int cellHeight = (SCREEN_HEIGHT / numCells) - 10;
-        int cellSize = sqrt(SCREEN_HEIGHT * SCREEN_WIDTH / pairs.size());
+        double scaler = getMonitorScaler();
+       
+        //std::wstring outputDebugString = L"scaler is " + std::to_wstring(scaler);
+        //MessageBox(NULL, outputDebugString.c_str(), L"Внимание", MB_OK | MB_ICONERROR);
+        int cellSize = sqrt(SCREEN_HEIGHT * SCREEN_WIDTH * scaler / pairs.size());
         int numCellsInRow = (SCREEN_WIDTH / cellSize);
 
         
@@ -541,12 +584,14 @@ LRESULT CALLBACK MainWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
     return 0;
 }
 
+
+// make keys pairs for mouse jump
 void makePairs() {
     //Sleep(10);
     const char* leftHand = "qwertasdfgzxcvb"; // 15 chars
     const char* leftHandNumbers = "QWERTASDFGZXCVB123456"; // 21 chars
     const char* rightHand = "yuiop[]hjkl;'nm,./";  // 17 chars
-    const char* rightHandNumbers = "YUIOP[]HJKL;'NM,./7890-="; // 22 chars
+    const char* rightHandNumbers = "YUIOP[]HJKL;'NM,./7890-"; // 22 chars
 
     // filling vector<vector<char>> pairs
     std::vector<char> pair;
@@ -564,6 +609,8 @@ void makePairs() {
             pair.clear();
         }
     }
+    //pairs.push_back({'=', 'Q'});
+    //pairs.push_back({ '=', 'W' });
     
     // print all gotten pairs
     for (const auto& _pair : pairs) {
